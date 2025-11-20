@@ -1,0 +1,9 @@
+/* Moved from original components/Button.module.css */
+.btn {
+  padding: 8px 12px;
+  background: #000;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+}

@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "baseUrl": "src",
+    "paths": {
+      "@/*": ["./*"],
+      "@domain/*": ["../shared-domain/*"]
+    }
+  },
+  "include": ["src/**/*", "next.config.js"],
+  "exclude": ["node_modules", ".next"]
+}

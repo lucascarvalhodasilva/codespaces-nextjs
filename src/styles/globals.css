@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Moved from root global.css */
+body {
+  font-family: 'SF Pro Text', 'SF Pro Icons', 'Helvetica Neue', 'Helvetica',
+    'Arial', sans-serif;
+  margin: 0 auto;
+  font-size: 16px;
+  line-height: 1.65;
+  word-break: break-word;
+  font-kerning: auto;
+  font-variant: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  hyphens: auto;
+}
+
+/* Global Themed Scrollbar */
+html, body, body * {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: #5C8374 transparent; /* thumb transparent track */
+}
+
+/* Base scrollbar (Safari/WebKit require explicit selectors) */
+*::-webkit-scrollbar,
+body::-webkit-scrollbar,
+body *::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+*::-webkit-scrollbar-track,
+body::-webkit-scrollbar-track,
+body *::-webkit-scrollbar-track {
+  background: transparent; /* remove visible track */
+}
+*::-webkit-scrollbar-thumb,
+body::-webkit-scrollbar-thumb,
+body *::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg,#183D3D,#5C8374);
+  border-radius: 999px;
+  border: 2px solid rgba(4,13,18,0.85);
+  box-shadow: inset 0 0 0 1px rgba(147,177,166,0.15);
+  transition: background .2s ease, box-shadow .2s ease;
+  background-clip: padding-box;
+  min-height: 32px;
+}
+*::-webkit-scrollbar-thumb:hover,
+body::-webkit-scrollbar-thumb:hover,
+body *::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg,#5C8374,#93B1A6);
+  box-shadow: inset 0 0 0 1px rgba(147,177,166,0.4);
+}
+*::-webkit-scrollbar-thumb:active,
+body::-webkit-scrollbar-thumb:active,
+body *::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg,#5C8374,#183D3D);
+}
+
+/* Thin variant utility */
+.thin-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  border-width: 1px;
+}
+
+/* Faded track utility */
+.scrollbar-track-fade::-webkit-scrollbar-track {
+  background: transparent; /* disabled gradient per request */
+}
+
+/* Hidden scrollbar utility (still scrollable) */
+.scrollbar-hidden::-webkit-scrollbar { display: none; }
+.scrollbar-hidden { -ms-overflow-style: none; scrollbar-width: none; }
+
+
+/* Animations */
+@keyframes strategyEnter {
+  0% { opacity: 0; transform: translateY(12px) scale(.98); }
+  60% { opacity: 1; transform: translateY(-2px) scale(1.01); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-strategy-enter { animation: strategyEnter .5s cubic-bezier(.16,.8,.3,1); }
+.animate-fadeIn { animation: fadeIn .3s ease-out; }

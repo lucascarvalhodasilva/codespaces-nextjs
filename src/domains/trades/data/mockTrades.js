@@ -1,0 +1,62 @@
+export const mockTrades = [
+  {
+    id: 101,
+    strategyId: 1,
+    strategyName: 'Breakout Momentum',
+    instrument: 'BTCUSDT',
+    direction: 'long',
+    entryDatetime: '2024-10-02T09:15:00Z',
+    exitDatetime: '2024-10-04T12:45:00Z',
+    entryPrice: 62000,
+    exitPrice: 64850,
+    positionSize: 0.5,
+    realizedPnl: 1425,
+    rMultiple: 2.3,
+    createdAt: '2024-10-02T09:15:00Z'
+  },
+  {
+    id: 102,
+    strategyId: 2,
+    strategyName: 'Mean Reversion',
+    instrument: 'ETHUSDT',
+    direction: 'short',
+    entryDatetime: '2024-10-05T15:30:00Z',
+    exitDatetime: '2024-10-06T10:00:00Z',
+    entryPrice: 3360,
+    exitPrice: 3295,
+    positionSize: 10,
+    realizedPnl: 650,
+    rMultiple: 1.1,
+    createdAt: '2024-10-05T15:30:00Z'
+  },
+  {
+    id: 103,
+    strategyId: null,
+    strategyName: null,
+    instrument: 'AAPL',
+    direction: 'long',
+    entryDatetime: '2024-10-07T14:00:00Z',
+    exitDatetime: '2024-10-10T20:10:00Z',
+    entryPrice: 182.4,
+    exitPrice: 176.9,
+    positionSize: 200,
+    realizedPnl: -1100,
+    rMultiple: -0.8,
+    createdAt: '2024-10-07T14:00:00Z'
+  },
+  {
+    id: 104,
+    strategyId: 1,
+    strategyName: 'Breakout Momentum',
+    instrument: 'SPX500',
+    direction: 'short',
+    entryDatetime: '2024-10-12T08:30:00Z',
+    exitDatetime: null,
+    entryPrice: 5468,
+    exitPrice: null,
+    positionSize: 2,
+    realizedPnl: null,
+    rMultiple: null,
+    createdAt: '2024-10-12T08:30:00Z'
+  }
+]

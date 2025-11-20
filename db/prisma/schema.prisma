@@ -1,0 +1,76 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  strategies   Strategy[]
+  trades       Trade[]
+}
+
+model Strategy {
+  id                 Int                  @id @default(autoincrement())
+  userId             Int                  @map("user_id")
+  name               String
+  shortCode          String?              @map("short_code")
+  setupDescription   String?              @map("setup_description")
+  notes              String?
+  isActive           Int                  @default(1) @map("is_active") // 1 = active, 0 = archived
+  createdAt          DateTime             @default(now()) @map("created_at")
+  
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  technicals         StrategyTechnical[]
+  trades             Trade[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("strategies")
+}
+
+model StrategyTechnical {
+  id           Int      @id @default(autoincrement())
+  strategyId   Int      @map("strategy_id")
+  indicator    String
+  timeframe    String?
+  condition    String
+  displayOrder Int?     @map("display_order")
+  isRequired   Int      @default(1) @map("is_required") // 1 = required, 0 = optional
+  
+  strategy     Strategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+
+  @@index([strategyId])
+  @@map("strategy_technicals")
+}
+
+model Trade {
+  id            Int             @id @default(autoincrement())
+  userId        Int             @map("user_id")
+  strategyId    Int?            @map("strategy_id")
+  instrument    String
+  direction     String
+  entryDatetime DateTime        @map("entry_datetime")
+  exitDatetime  DateTime?       @map("exit_datetime")
+  entryPrice    Float           @map("entry_price")
+  exitPrice     Float?          @map("exit_price")
+  positionSize  Float           @map("position_size")
+  realizedPnl   Float?          @map("realized_pnl")
+  rMultiple     Float?          @map("r_multiple")
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  strategy      Strategy?       @relation(fields: [strategyId], references: [id], onDelete: SetNull)
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([strategyId], map: "idx_trades_strategy")
+  @@index([entryDatetime], map: "idx_trades_entry_datetime")
+  @@map("trades")
+}
