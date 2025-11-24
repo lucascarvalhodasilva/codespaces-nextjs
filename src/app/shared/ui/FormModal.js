@@ -10,7 +10,7 @@ export default function FormModal({
 }) {
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm">
       <div className="bg-primary-dark rounded-2xl border border-primary/30 w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden shadow-[0_25px_55px_rgba(0,0,0,0.55)] mx-4 my-6 md:mx-0">
         <div className="sticky top-0 z-10 bg-primary-dark border-b border-primary/30 px-6 py-5 flex items-start justify-between gap-4">
           <div className="space-y-1">

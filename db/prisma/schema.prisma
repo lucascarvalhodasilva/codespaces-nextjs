@@ -9,6 +9,7 @@ generator client {
 
 model User {
   id           Int      @id @default(autoincrement())
+  username     String   @unique
   email        String   @unique
   passwordHash String
   createdAt    DateTime @default(now())
@@ -25,6 +26,7 @@ model Strategy {
   setupDescription   String?              @map("setup_description")
   notes              String?
   isActive           Int                  @default(1) @map("is_active") // 1 = active, 0 = archived
+  archivedReason     String?              @map("archived_reason")
   createdAt          DateTime             @default(now()) @map("created_at")
   
   user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -64,6 +66,7 @@ model Trade {
   positionSize  Float           @map("position_size")
   realizedPnl   Float?          @map("realized_pnl")
   rMultiple     Float?          @map("r_multiple")
+  platform      String?         @map("platform")
   createdAt     DateTime        @default(now()) @map("created_at")
 
   strategy      Strategy?       @relation(fields: [strategyId], references: [id], onDelete: SetNull)

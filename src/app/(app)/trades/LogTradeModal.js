@@ -1,9 +1,12 @@
 'use client'
 import { useState, useMemo, useEffect } from 'react'
 import FormModal from '../../shared/ui/FormModal'
+import ComboBox from '../../../shared/ui/ComboBox'
+import Select from '../../../shared/ui/Select'
 
 const defaultForm = {
   instrument: '',
+  platform: '',
   direction: 'long',
   entryDatetime: '',
   exitDatetime: '',
@@ -28,6 +31,7 @@ const formatDateForInput = (value) => {
 
 const createFormFromTrade = (trade) => ({
   instrument: trade.instrument ?? '',
+  platform: trade.platform ?? '',
   direction: trade.direction ?? 'long',
   entryDatetime: formatDateForInput(trade.entryDatetime),
   exitDatetime: formatDateForInput(trade.exitDatetime),
@@ -42,6 +46,7 @@ const createFormFromTrade = (trade) => ({
 
 export default function LogTradeModal({
   strategies = [],
+  platforms = [],
   mode = 'create',
   trade = null,
   onClose,
@@ -102,6 +107,7 @@ export default function LogTradeModal({
     try {
       const payload = {
         instrument: form.instrument.trim(),
+        platform: form.platform?.trim() || null,
         direction: form.direction,
         entryDatetime: form.entryDatetime,
         exitDatetime: form.isOpen ? null : form.exitDatetime || null,
@@ -146,7 +152,7 @@ export default function LogTradeModal({
       onClose={onClose}
     >
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm text-primary-light/80 mb-2">Instrument *</label>
               <input
@@ -158,19 +164,27 @@ export default function LogTradeModal({
               />
             </div>
             <div>
-              <label className="block text-sm text-primary-light/80 mb-2">Strategy</label>
-              <select
+              <Select
+                label="Strategy"
                 value={form.strategyId}
-                onChange={(e) => updateField('strategyId', e.target.value)}
-                className="w-full px-4 py-2 bg-primary-darkest/50 border border-primary/30 rounded-lg text-primary-light focus:outline-none focus:border-primary"
-              >
-                <option value="">Manual / No strategy</option>
-                {strategies.map((strategy) => (
-                  <option key={strategy.id} value={strategy.id}>
-                    {strategy.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(nextValue) => updateField('strategyId', nextValue)}
+                options={[
+                  { label: 'Manual / No strategy', value: '' },
+                  ...strategies.map((strategy) => ({ label: strategy.name, value: String(strategy.id) }))
+                ]}
+                placeholder="Select strategy"
+                name="strategyId"
+              />
+            </div>
+            <div>
+              <ComboBox
+                label="Platform"
+                placeholder="Exchange or broker"
+                value={form.platform}
+                onChange={(nextValue) => updateField('platform', nextValue)}
+                options={platforms}
+                name="platform"
+              />
             </div>
           </div>
 

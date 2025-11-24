@@ -54,7 +54,8 @@ export async function POST(request) {
     // JWT Token erstellen
     const token = createToken({
       userId: user.id,
-      email: user.email
+      email: user.email,
+      username: user.username
     })
 
     // Cookie setzen
@@ -66,6 +67,7 @@ export async function POST(request) {
       data: {
         user: {
           id: user.id,
+          username: user.username,
           email: user.email,
           createdAt: user.createdAt
         }

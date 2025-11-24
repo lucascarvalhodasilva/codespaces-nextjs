@@ -28,44 +28,50 @@ html, body, body * {
 *::-webkit-scrollbar,
 body::-webkit-scrollbar,
 body *::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
 }
 *::-webkit-scrollbar-track,
 body::-webkit-scrollbar-track,
 body *::-webkit-scrollbar-track {
-  background: transparent; /* remove visible track */
+  background: transparent;
+  background-color: transparent;
+  border-radius: 999px;
 }
 *::-webkit-scrollbar-thumb,
 body::-webkit-scrollbar-thumb,
 body *::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg,#183D3D,#5C8374);
+  background: linear-gradient(135deg, #3fe0b6 0%, #0d9f88 60%, #0b7062 100%);
   border-radius: 999px;
-  border: 2px solid rgba(4,13,18,0.85);
-  box-shadow: inset 0 0 0 1px rgba(147,177,166,0.15);
-  transition: background .2s ease, box-shadow .2s ease;
+  border: 2px solid rgba(3,7,18,0.75);
+  box-shadow: 0 2px 12px rgba(63, 224, 182, 0.25), inset 0 0 0 1px rgba(255,255,255,0.08);
+  transition: background .2s ease, box-shadow .2s ease, transform .2s ease;
   background-clip: padding-box;
   min-height: 32px;
 }
 *::-webkit-scrollbar-thumb:hover,
 body::-webkit-scrollbar-thumb:hover,
 body *::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg,#5C8374,#93B1A6);
-  box-shadow: inset 0 0 0 1px rgba(147,177,166,0.4);
+  background: linear-gradient(135deg, #5df6cb 0%, #14cfa9 60%, #0a8f7d 100%);
+  box-shadow: 0 4px 18px rgba(93, 246, 203, 0.35), inset 0 0 0 1px rgba(255,255,255,0.15);
+  transform: translateY(-1px);
 }
 *::-webkit-scrollbar-thumb:active,
 body::-webkit-scrollbar-thumb:active,
 body *::-webkit-scrollbar-thumb:active {
-  background: linear-gradient(180deg,#5C8374,#183D3D);
+  background: linear-gradient(135deg, #0a8f7d, #07584f);
+  box-shadow: 0 4px 14px rgba(10, 143, 125, 0.45), inset 0 0 0 1px rgba(255,255,255,0.1);
+  transform: translateY(0);
 }
 
 /* Thin variant utility */
 .thin-scrollbar::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 .thin-scrollbar::-webkit-scrollbar-thumb {
   border-width: 1px;
+  box-shadow: 0 1px 6px rgba(63, 224, 182, 0.2);
 }
 
 /* Faded track utility */

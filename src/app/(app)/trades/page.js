@@ -28,6 +28,9 @@ export default async function TradesPage() {
 
   const summary = summarizeTrades(trades)
   const monthlyPnL = groupTradesByMonth(trades)
+  const platforms = Array.from(new Set(trades.map((trade) => trade.platform).filter(Boolean))).sort((a, b) =>
+    a.localeCompare(b)
+  )
   const strategies = await prisma.strategy.findMany({
     where: { userId: user.id },
     select: { id: true, name: true },
@@ -42,6 +45,7 @@ export default async function TradesPage() {
           initialSummary={summary}
           initialMonthlyPnL={monthlyPnL}
           strategies={strategies}
+          initialPlatforms={platforms}
         />
       </div>
     </div>

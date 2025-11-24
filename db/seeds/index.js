@@ -9,7 +9,7 @@ const SEED_SCRIPTS = {
 const OPTION_TO_SEEDS = {
   trades: ['trades'],
   strategies: ['strategies'],
-  all: Object.keys(SEED_SCRIPTS)
+  all: ['strategies', 'trades']
 }
 
 function normalizeArg(arg) {

@@ -15,7 +15,8 @@ export default function EditStrategyModal({ strategy, onClose, onUpdated, onDele
     shortCode: strategy.shortCode || '',
     setupDescription: strategy.setupDescription || '',
     notes: strategy.notes || '',
-    isActive: strategy.isActive
+    isActive: strategy.isActive,
+    archivedReason: strategy.archivedReason || ''
   })
 
   const [technicals, setTechnicals] = useState(
@@ -40,6 +41,7 @@ export default function EditStrategyModal({ strategy, onClose, onUpdated, onDele
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          archivedReason: formData.archivedReason?.trim() || null,
           technicals: technicals.map(({ id, ...rest }) => rest) // Remove id for new technicals
         })
       })
@@ -181,13 +183,35 @@ export default function EditStrategyModal({ strategy, onClose, onUpdated, onDele
               type="checkbox"
               id="isActive"
               checked={formData.isActive === 1}
-              onChange={(e) => setFormData({ ...formData, isActive: e.target.checked ? 1 : 0 })}
+              onChange={(e) => {
+                const nextIsActive = e.target.checked ? 1 : 0
+                setFormData(prev => ({
+                  ...prev,
+                  isActive: nextIsActive,
+                  archivedReason: nextIsActive ? '' : prev.archivedReason
+                }))
+              }}
               className="w-4 h-4"
             />
             <label htmlFor="isActive" className="text-sm font-medium text-primary-light/80">
               Active Strategy
             </label>
           </div>
+
+          {formData.isActive !== 1 && (
+            <div>
+              <label className="block text-sm font-medium text-primary-light/80 mb-2">
+                Archive Reason (optional)
+              </label>
+              <textarea
+                value={formData.archivedReason}
+                onChange={(e) => setFormData({ ...formData, archivedReason: e.target.value })}
+                rows={2}
+                placeholder="e.g., poor performance, broken setup"
+                className="w-full px-4 py-2 bg-primary-darkest/50 border border-primary/30 rounded-lg text-primary-light focus:outline-none focus:border-primary resize-none"
+              />
+            </div>
+          )}
 
           {/* Technical Conditions */}
           <div className="border-t border-primary/30 pt-6">
@@ -308,10 +332,11 @@ export default function EditStrategyModal({ strategy, onClose, onUpdated, onDele
             <div className="flex gap-3">
               <button
                 type="button"
-                onClick={onClose}
-                className="flex-1 px-6 py-3 bg-primary/20 hover:bg-primary/30 text-primary-light font-semibold rounded-lg transition-colors"
+                onClick={handleDelete}
+                disabled={loading}
+                className="flex-1 px-6 py-3 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-600/30 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Cancel
+                Delete Strategy
               </button>
               <button
                 type="submit"
@@ -321,14 +346,6 @@ export default function EditStrategyModal({ strategy, onClose, onUpdated, onDele
                 {loading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
-            <button
-              type="button"
-              disabled={loading}
-              onClick={handleDelete}
-              className="px-5 py-2.5 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-600/30 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed self-start"
-            >
-              Delete Strategy
-            </button>
           </div>
         </form>
     </FormModal>

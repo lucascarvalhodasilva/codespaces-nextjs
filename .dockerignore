@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.gitignore
+Dockerfile
+npm-debug.log
+.env*
+.vscode
+.devcontainer
+db/prisma/migrations
+scripts/local

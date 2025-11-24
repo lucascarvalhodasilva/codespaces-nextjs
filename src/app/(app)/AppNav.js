@@ -36,11 +36,8 @@ export default function AppNav({ user }) {
       {/* Header */}
       <div className="p-6 border-b border-primary/30">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-primary-darkest font-bold text-xl">₿</span>
-          </div>
           <div>
-            <h1 className="text-primary-light font-bold text-lg">CryptoJournal</h1>
+            <h1 className="text-primary-light font-bold text-lg">SimpleTrade</h1>
             <p className="text-primary-light/60 text-xs">Track. Analyze. Win.</p>
           </div>
         </div>

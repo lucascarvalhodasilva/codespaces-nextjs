@@ -2,17 +2,45 @@
 import { useMemo, useState } from 'react'
 import StrategyCard from './StrategyCard'
 import NewStrategyModal from './NewStrategyModal'
+import EditStrategyModal from './EditStrategyModal'
+import ArchiveStrategyModal from './ArchiveStrategyModal'
+import Select from '../../../shared/ui/Select'
 import { useToast } from '../../../shared/ui/ToastProvider'
 import { useConfirmation } from '../../../shared/ui/ConfirmationProvider'
 
-export default function StrategiesClient({ strategies: initialStrategies }) {
+const currencyFormatter = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 2
+})
+
+const emptyStats = {
+  total: 0,
+  open: 0,
+  closed: 0,
+  winRate: 0,
+  totalPnl: 0,
+  avgR: 0,
+  lastTradeAt: null,
+  topInstruments: []
+}
+
+const lastTradeFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric'
+})
+
+export default function StrategiesClient({ strategies: initialStrategies, strategyStats = {} }) {
   const [showNewModal, setShowNewModal] = useState(false)
   const [strategies, setStrategies] = useState(initialStrategies)
   const [sidebarStrategyId, setSidebarStrategyId] = useState(null)
   const [sidebarActionLoading, setSidebarActionLoading] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [sortOrder, setSortOrder] = useState('desc')
+  const [sortOrder, setSortOrder] = useState('performance-desc')
+  const [editingStrategy, setEditingStrategy] = useState(null)
+  const [archivingStrategy, setArchivingStrategy] = useState(null)
   const { push: pushToast } = useToast()
   const confirm = useConfirmation()
 
@@ -20,6 +48,16 @@ export default function StrategiesClient({ strategies: initialStrategies }) {
     () => strategies.find((strategy) => strategy.id === sidebarStrategyId) ?? null,
     [strategies, sidebarStrategyId]
   )
+
+  const sidebarStats = sidebarStrategy
+    ? (strategyStats?.[sidebarStrategy.id] ?? emptyStats)
+    : emptyStats
+
+  const lastTradeLabel = sidebarStats.lastTradeAt
+    ? lastTradeFormatter.format(new Date(sidebarStats.lastTradeAt))
+    : '—'
+
+  const instrumentLeaders = sidebarStats.topInstruments ?? []
 
   const filteredStrategies = useMemo(() => {
     const term = searchQuery.trim().toLowerCase()
@@ -32,17 +70,37 @@ export default function StrategiesClient({ strategies: initialStrategies }) {
     const matchesStatus = (strategy) => {
       if (statusFilter === 'all') return true
       const isActive = Boolean(strategy.isActive)
-      return statusFilter === 'active' ? isActive : !isActive
+      if (statusFilter === 'active') return isActive
+      if (statusFilter === 'archived') return !isActive
+      return true
     }
+
+    const strategyPnl = (strategy) => strategyStats?.[strategy.id]?.totalPnl ?? 0
 
     return [...strategies]
       .filter((strategy) => matchesSearch(strategy) && matchesStatus(strategy))
       .sort((a, b) => {
+        if (sortOrder === 'performance-desc') {
+          const diff = strategyPnl(b) - strategyPnl(a)
+          if (diff !== 0) return diff
+        } else if (sortOrder === 'performance-asc') {
+          const diff = strategyPnl(a) - strategyPnl(b)
+          if (diff !== 0) return diff
+        }
+
         const aDate = new Date(a.createdAt).getTime()
         const bDate = new Date(b.createdAt).getTime()
-        return sortOrder === 'asc' ? aDate - bDate : bDate - aDate
+        if (sortOrder === 'created-asc') {
+          return aDate - bDate
+        }
+        if (sortOrder === 'created-desc') {
+          return bDate - aDate
+        }
+
+        // default fallback
+        return bDate - aDate
       })
-  }, [strategies, searchQuery, statusFilter, sortOrder])
+  }, [strategies, searchQuery, statusFilter, sortOrder, strategyStats])
 
   const handleCreated = (strategy) => {
     const newStrategy = { ...strategy, __isNew: true }
@@ -68,44 +126,38 @@ export default function StrategiesClient({ strategies: initialStrategies }) {
   const closeSidebar = () => {
     setSidebarStrategyId(null)
     setSidebarActionLoading(null)
+    setArchivingStrategy(null)
   }
 
-  const handleDeactivated = async (strategyId) => {
-    const target = strategies.find((s) => s.id === strategyId)
-    if (!target) {
-      pushToast('Strategy not found', { type: 'error' })
-      return
-    }
-    if (!target.isActive) {
-      pushToast(`${target.name} is already inactive`, { type: 'info' })
-      return false
-    }
-
+  const mutateStrategy = async (strategyId, payload, successMessage) => {
     try {
       const response = await fetch(`/api/strategies/${strategyId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isActive: 0 })
+        body: JSON.stringify(payload)
       })
-
       const data = await response.json().catch(() => ({}))
 
-      if (!response.ok || data.success === false || !data.data) {
-        throw new Error(data.message || 'Failed to deactivate strategy')
+      if (!response.ok || data.success === false) {
+        throw new Error(data.message || 'Failed to update strategy')
       }
 
-      const updatedStrategy = { ...data.data, __isNew: false }
+      const updated = data.data
+      setStrategies(prev => prev.map((strategy) =>
+        strategy.id === updated.id
+          ? { ...strategy, ...updated, __isNew: false }
+          : strategy
+      ))
 
-      setStrategies((prev) => prev.map((strategy) => (
-        strategy.id === strategyId ? updatedStrategy : strategy
-      )))
+      if (successMessage) {
+        pushToast(successMessage, { type: 'info' })
+      }
 
-      pushToast(`Deactivated strategy: ${updatedStrategy.name}`, { type: 'success' })
-      return true
+      return updated
     } catch (error) {
       console.error(error)
-      pushToast(error.message || 'Failed to deactivate strategy', { type: 'error' })
-      return false
+      pushToast(error.message || 'Failed to update strategy', { type: 'error' })
+      return null
     }
   }
 
@@ -146,10 +198,38 @@ export default function StrategiesClient({ strategies: initialStrategies }) {
     }
   }
 
-  const handleSidebarDeactivate = async () => {
+  const handleSidebarArchive = () => {
     if (!sidebarStrategy) return
-    setSidebarActionLoading('deactivate')
-    await handleDeactivated(sidebarStrategy.id)
+    setArchivingStrategy(sidebarStrategy)
+  }
+
+  const handleArchiveConfirm = async (reason) => {
+    if (!archivingStrategy) return
+    setSidebarActionLoading('archive')
+    const result = await mutateStrategy(
+      archivingStrategy.id,
+      { isActive: 0, archivedReason: reason?.trim() || null },
+      `Archived strategy: ${archivingStrategy.name}`
+    )
+    setSidebarActionLoading(null)
+    if (result) {
+      setArchivingStrategy(null)
+    }
+  }
+
+  const handleArchiveCancel = () => {
+    if (sidebarActionLoading === 'archive') return
+    setArchivingStrategy(null)
+  }
+
+  const handleSidebarRestore = async () => {
+    if (!sidebarStrategy) return
+    setSidebarActionLoading('restore')
+    await mutateStrategy(
+      sidebarStrategy.id,
+      { isActive: 1, archivedReason: null },
+      `Restored strategy: ${sidebarStrategy.name}`
+    )
     setSidebarActionLoading(null)
   }
 
@@ -191,30 +271,30 @@ export default function StrategiesClient({ strategies: initialStrategies }) {
                 className="w-full px-3 py-2 rounded-lg bg-primary-darkest border border-primary/30 text-primary-light focus:outline-none focus:border-primary"
               />
             </label>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-              <label className="text-xs uppercase tracking-[0.3em] text-primary-light/40 flex flex-col gap-2">
-                Status
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-3 py-2 rounded-lg bg-primary-darkest border border-primary/30 text-primary-light focus:outline-none focus:border-primary text-sm"
-                >
-                  <option value="all">All</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </label>
-              <label className="text-xs uppercase tracking-[0.3em] text-primary-light/40 flex flex-col gap-2">
-                Order by
-                <select
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value)}
-                  className="px-3 py-2 rounded-lg bg-primary-darkest border border-primary/30 text-primary-light focus:outline-none focus:border-primary text-sm"
-                >
-                  <option value="desc">Newest first</option>
-                  <option value="asc">Oldest first</option>
-                </select>
-              </label>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+              <Select
+                className="sm:min-w-[180px]"
+                label={<span className="text-xs uppercase tracking-[0.3em] text-primary-light/40">Status</span>}
+                value={statusFilter}
+                onChange={(nextValue) => setStatusFilter(nextValue)}
+                options={[
+                  { label: 'All', value: 'all' },
+                  { label: 'Active', value: 'active' },
+                  { label: 'Archived', value: 'archived' }
+                ]}
+              />
+              <Select
+                className="sm:min-w-[200px]"
+                label={<span className="text-xs uppercase tracking-[0.3em] text-primary-light/40">Order by</span>}
+                value={sortOrder}
+                onChange={(nextValue) => setSortOrder(nextValue)}
+                options={[
+                  { label: 'Newest created', value: 'created-desc' },
+                  { label: 'Oldest created', value: 'created-asc' },
+                  { label: 'Most successful', value: 'performance-desc' },
+                  { label: 'Least successful', value: 'performance-asc' }
+                ]}
+              />
             </div>
           </div>
 
@@ -258,6 +338,33 @@ export default function StrategiesClient({ strategies: initialStrategies }) {
         <NewStrategyModal onClose={() => setShowNewModal(false)} onCreated={handleCreated} />
       )}
 
+      {editingStrategy && (
+        <EditStrategyModal
+          strategy={editingStrategy}
+          onClose={() => setEditingStrategy(null)}
+          onUpdated={(updated) => {
+            handleUpdated(updated)
+            setEditingStrategy(null)
+          }}
+          onDeleted={(id, name) => {
+            handleDeleted(id, name)
+            setEditingStrategy(null)
+            if (sidebarStrategyId === id) {
+              closeSidebar()
+            }
+          }}
+        />
+      )}
+
+      {archivingStrategy && (
+        <ArchiveStrategyModal
+          strategy={archivingStrategy}
+          onClose={handleArchiveCancel}
+          onConfirm={handleArchiveConfirm}
+          isSubmitting={sidebarActionLoading === 'archive'}
+        />
+      )}
+
       {sidebarStrategy && (
         <>
           <div
@@ -270,9 +377,14 @@ export default function StrategiesClient({ strategies: initialStrategies }) {
                 <p className="text-xs uppercase tracking-[0.3em] text-primary-light/50 mb-1">Strategy</p>
                 <h2 className="text-2xl font-semibold text-primary-light">{sidebarStrategy.name}</h2>
                 <p className="text-sm text-primary-light/60">
-                  {sidebarStrategy.isActive ? 'Active' : 'Inactive'} • Created{' '}
+                  {sidebarStrategy.isActive ? 'Active' : 'Archived'} • Created{' '}
                   {new Date(sidebarStrategy.createdAt).toLocaleDateString('de-DE')}
                 </p>
+                {!sidebarStrategy.isActive && sidebarStrategy.archivedReason && (
+                  <p className="text-xs text-amber-200 mt-2">
+                    Archived because: {sidebarStrategy.archivedReason}
+                  </p>
+                )}
               </div>
               <button
                 type="button"
@@ -284,33 +396,132 @@ export default function StrategiesClient({ strategies: initialStrategies }) {
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              <button
-                type="button"
-                onClick={handleSidebarDeactivate}
-                disabled={!sidebarStrategy.isActive || sidebarActionLoading === 'deactivate'}
-                className="w-full px-4 py-3 rounded-lg bg-amber-500/20 text-amber-200 border border-amber-500/40 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {sidebarStrategy.isActive
-                  ? (sidebarActionLoading === 'deactivate' ? 'Deactivating…' : 'Deactivate strategy')
-                  : 'Already inactive'}
-              </button>
-              <button
-                type="button"
-                onClick={handleSidebarDelete}
-                disabled={sidebarActionLoading === 'delete'}
-                className="w-full px-4 py-3 rounded-lg bg-red-600/20 text-red-200 border border-red-600/40 font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {sidebarActionLoading === 'delete' ? 'Deleting…' : 'Delete strategy'}
-              </button>
+            <div className="flex-1 overflow-y-auto p-6 space-y-5 text-sm text-primary-light/70">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.3em] text-primary-light/40 mb-3">Performance Snapshot</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <SidebarSnapshotStat
+                    label="Net Realized PnL"
+                    value={currencyFormatter.format(sidebarStats.totalPnl || 0)}
+                    sub={`${sidebarStats.closed} closed trades`}
+                    tone={sidebarStats.totalPnl > 0 ? 'positive' : sidebarStats.totalPnl < 0 ? 'negative' : 'neutral'}
+                  />
+                  <SidebarSnapshotStat
+                    label="Win Rate"
+                    value={`${Math.round(sidebarStats.winRate || 0)}%`}
+                    sub={sidebarStats.closed ? `${sidebarStats.closed} closed` : 'No closed trades yet'}
+                  />
+                  <SidebarSnapshotStat
+                    label="Avg R-Multiple"
+                    value={`${(sidebarStats.avgR || 0).toFixed(2)} R`}
+                    sub="Across closed trades"
+                  />
+                  <SidebarSnapshotStat
+                    label="Total Trades"
+                    value={sidebarStats.total}
+                    sub={`${sidebarStats.open} open now`}
+                  />
+                  <SidebarSnapshotStat
+                    label="Last Trade"
+                    value={lastTradeLabel}
+                    sub={sidebarStats.lastTradeAt ? 'Most recent entry' : 'No trades logged yet'}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.3em] text-primary-light/40 mb-3">Instrument Leaderboard</p>
+                {instrumentLeaders.length > 0 ? (
+                  <div className="space-y-2">
+                    {instrumentLeaders.map((leader, index) => {
+                      const tierClass = index === 0
+                        ? 'border-yellow-400/70 hover:border-yellow-200'
+                        : index === 1
+                          ? 'border-gray-300/70 hover:border-gray-100'
+                          : 'border-[#8c6239]/70 hover:border-[#c08552]'
+
+                      return (
+                        <div
+                          key={`${leader.instrument}-${index}`}
+                          className={`group rounded-lg border ${tierClass} bg-primary-darkest/30 px-3 py-2 flex items-center justify-between gap-3 transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5`}
+                        >
+                        <div>
+                            <p className="text-sm font-semibold text-primary-light flex items-center gap-2">
+                              <span>{leader.instrument}</span>
+                              <span className="text-[10px] uppercase tracking-[0.2em] text-primary-light/60 group-hover:text-primary-light/40 transform transition-transform duration-200 group-hover:scale-110">
+                                #{index + 1}
+                              </span>
+                          </p>
+                          <p className="text-[11px] text-primary-light/60">
+                            {leader.trades} trades • {leader.winRate?.toFixed(0) ?? 0}% win rate
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-primary-light/90">
+                            {currencyFormatter.format(leader.totalPnl || 0)}
+                          </p>
+                          <p className="text-[11px] text-primary-light/50">avg {currencyFormatter.format(leader.avgPnl || 0)}</p>
+                        </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-primary-light/50">No instrument history for this strategy yet.</p>
+                )}
+              </div>
             </div>
 
-            <div className="mt-auto p-6 text-xs text-primary-light/50 border-t border-primary/20">
-              More insights & statistics coming soon.
+            <div className="mt-auto">
+              <div className="p-6 border-t border-primary/20">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditingStrategy(sidebarStrategy)}
+                    className="px-4 py-2 rounded-lg border border-primary/40 text-primary-light hover:border-primary/70"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={sidebarStrategy.isActive ? handleSidebarArchive : handleSidebarRestore}
+                    disabled={sidebarActionLoading === 'archive' || sidebarActionLoading === 'restore' || Boolean(archivingStrategy)}
+                    className={`px-4 py-2 rounded-lg border font-semibold disabled:opacity-50 disabled:cursor-not-allowed ${sidebarStrategy.isActive ? 'bg-amber-500/20 border-amber-400 text-amber-100 hover:border-amber-300' : 'bg-green-500/20 border-green-400 text-green-100 hover:border-green-300'}`}
+                  >
+                    {sidebarStrategy.isActive
+                      ? (sidebarActionLoading === 'archive' ? 'Archiving…' : 'Archive')
+                      : (sidebarActionLoading === 'restore' ? 'Restoring…' : 'Restore')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSidebarDelete}
+                    disabled={sidebarActionLoading === 'delete'}
+                    className="px-4 py-2 rounded-lg border border-red-500/40 text-red-300 hover:border-red-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {sidebarActionLoading === 'delete' ? 'Deleting…' : 'Delete'}
+                  </button>
+                </div>
+              </div>
             </div>
           </aside>
         </>
       )}
+    </div>
+  )
+}
+
+function SidebarSnapshotStat({ label, value, sub, tone = 'neutral' }) {
+  const toneClass = tone === 'positive'
+    ? 'text-green-300'
+    : tone === 'negative'
+      ? 'text-red-300'
+      : 'text-primary-light'
+
+  return (
+    <div className="rounded-xl border border-primary/30 bg-primary-dark/60 p-3">
+      <p className="text-[10px] uppercase tracking-[0.25em] text-primary-light/40 mb-1">{label}</p>
+      <p className={`text-lg font-semibold ${toneClass}`}>{value}</p>
+      {sub && <p className="text-xs text-primary-light/50 mt-0.5">{sub}</p>}
     </div>
   )
 }

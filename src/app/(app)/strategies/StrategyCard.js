@@ -1,33 +1,32 @@
 'use client'
-import { useEffect, useState } from 'react'
-import EditStrategyModal from './EditStrategyModal'
 
-export default function StrategyCard({ strategy, onUpdated, onDeleted, onShowDetails }) {
-  const [showEditModal, setShowEditModal] = useState(false)
+export default function StrategyCard({ strategy, onShowDetails }) {
   const isActive = Boolean(strategy.isActive)
+  const statusLabel = isActive ? 'Active' : 'Archived'
   const cardToneClasses = isActive
     ? 'bg-primary-dark border-primary/30 shadow-lg'
     : 'bg-primary-dark/40 border-primary/10 filter saturate-50'
-  const editButtonClasses = `flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-    isActive
-      ? 'bg-primary/20 hover:bg-primary/30 text-primary-light'
-      : 'bg-primary-darkest/60 border border-primary/20 text-primary-light/60'
-  }`
-  const detailsButtonClasses = `flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-    isActive
-      ? 'bg-primary hover:bg-primary/90 text-primary-darkest'
-      : 'bg-primary/20 text-primary-darkest/70 border border-primary/20'
-  }`
 
-  useEffect(() => {
-    if (!isActive && showEditModal) {
-      setShowEditModal(false)
+  const handleClick = () => {
+    onShowDetails?.(strategy.id)
+  }
+
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      onShowDetails?.(strategy.id)
     }
-  }, [isActive, showEditModal])
+  }
 
   return (
-    <>
-      <div className={`rounded-xl border p-6 transition-colors duration-300 ${cardToneClasses} ${strategy.__isNew ? 'animate-strategy-enter' : ''}`}>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      className={`rounded-xl border p-6 transition-all duration-300 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${cardToneClasses} ${strategy.__isNew ? 'animate-strategy-enter' : ''} hover:outline hover:outline-1 hover:outline-primary/60`}
+      aria-label={`View details for strategy ${strategy.name}`}
+    >
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
@@ -40,8 +39,13 @@ export default function StrategyCard({ strategy, onUpdated, onDeleted, onShowDet
               )}
             </div>
             <p className={`text-sm ${isActive ? 'text-primary-light/60' : 'text-primary-light/40'}`}>
-              {strategy.isActive ? 'Active' : 'Inactive'} • Created {new Date(strategy.createdAt).toLocaleDateString('de-DE')}
+              {statusLabel} • Created {new Date(strategy.createdAt).toLocaleDateString('de-DE')}
             </p>
+            {!isActive && strategy.archivedReason && (
+              <p className="text-xs text-amber-200 mt-1">
+                Archived: {strategy.archivedReason}
+              </p>
+            )}
           </div>
         </div>
 
@@ -100,38 +104,9 @@ export default function StrategyCard({ strategy, onUpdated, onDeleted, onShowDet
             </p>
           </div>
         )}
-
-        {/* Actions */}
-        <div className="flex gap-2 flex-wrap">
-          <button 
-            type="button"
-            disabled={!isActive}
-            onClick={isActive ? () => setShowEditModal(true) : undefined}
-            className={`${editButtonClasses} ${!isActive ? 'cursor-not-allowed opacity-60' : ''}`}
-            title={isActive ? 'Edit strategy' : 'Reactivate this strategy to edit'}
-            aria-disabled={!isActive}
-          >
-            Edit
-          </button>
-          <button
-            type="button"
-            onClick={() => onShowDetails?.(strategy.id)}
-            className={detailsButtonClasses}
-          >
-            Strategy Details
-          </button>
-        </div>
+      <div className="text-xs text-primary-light/40 italic">
+        Click to view full strategy details
       </div>
-
-      {/* Edit Modal */}
-      {showEditModal && (
-        <EditStrategyModal
-          strategy={strategy}
-          onClose={() => setShowEditModal(false)}
-          onUpdated={onUpdated}
-          onDeleted={onDeleted}
-        />
-      )}
-    </>
+    </div>
   )
 }

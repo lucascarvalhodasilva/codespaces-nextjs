@@ -25,6 +25,7 @@ import { summarizeTrades, groupTradesByMonth } from '../../../domains/trades/uti
 import { useToast } from '../../../shared/ui/ToastProvider'
 import { useConfirmation } from '../../../shared/ui/ConfirmationProvider'
 import { downloadCsv, buildTradeCsvRows } from '../../../shared/utils/csv.js'
+import Select from '../../../shared/ui/Select'
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -42,7 +43,8 @@ const formatTradeDate = (value) =>
 
 const normalizeClientTrade = (trade) => ({
   ...trade,
-  strategyName: trade.strategy?.name ?? trade.strategyName ?? null
+  strategyName: trade.strategy?.name ?? trade.strategyName ?? null,
+  platform: trade.platform ?? null
 })
 
 const normalizeSymbol = (value = '') => value.toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -95,10 +97,11 @@ function getPresetRange(preset) {
   }
 }
 
-export default function TradesClient({ initialTrades = [], initialSummary, initialMonthlyPnL, strategies = [] }) {
+export default function TradesClient({ initialTrades = [], initialSummary, initialMonthlyPnL, strategies = [], initialPlatforms = [] }) {
   const [trades, setTrades] = useState(initialTrades)
   const [summary, setSummary] = useState(initialSummary ?? summarizeTrades(initialTrades))
   const [monthlyPnL, setMonthlyPnL] = useState(initialMonthlyPnL ?? groupTradesByMonth(initialTrades))
+  const [platformOptions, setPlatformOptions] = useState(initialPlatforms)
   const [showModal, setShowModal] = useState(false)
   const [modalMode, setModalMode] = useState('create')
   const [activeTrade, setActiveTrade] = useState(null)
@@ -110,6 +113,7 @@ export default function TradesClient({ initialTrades = [], initialSummary, initi
   const [showCustomRangeModal, setShowCustomRangeModal] = useState(false)
   const [previousPreset, setPreviousPreset] = useState('all')
   const [isPortalReady, setIsPortalReady] = useState(false)
+  const [sidebarTradeId, setSidebarTradeId] = useState(null)
   const router = useRouter()
   const { push: pushToast } = useToast()
   const confirm = useConfirmation()
@@ -124,6 +128,11 @@ export default function TradesClient({ initialTrades = [], initialSummary, initi
     }
     return getPresetRange(filterPreset)
   }, [filterPreset, customRange.from, customRange.to])
+
+  const sidebarTrade = useMemo(
+    () => trades.find((trade) => trade.id === sidebarTradeId) ?? null,
+    [trades, sidebarTradeId]
+  )
 
   const dateFilteredTrades = useMemo(() => {
     if (!currentRange) return trades
@@ -176,6 +185,15 @@ export default function TradesClient({ initialTrades = [], initialSummary, initi
     setIsPortalReady(true)
   }, [])
 
+  const dateRangeLabel = useMemo(() => {
+    if (currentRange) {
+      const startLabel = format(currentRange.start, 'MMM d, yyyy')
+      const endLabel = format(currentRange.end, 'MMM d, yyyy')
+      return `${startLabel} – ${endLabel}`
+    }
+    return FILTER_OPTIONS.find((option) => option.value === filterPreset)?.label ?? 'All time'
+  }, [currentRange, filterPreset])
+
   const closeModal = () => {
     setShowModal(false)
     setActiveTrade(null)
@@ -186,6 +204,9 @@ export default function TradesClient({ initialTrades = [], initialSummary, initi
     const normalized = normalizeClientTrade(trade)
 
     setTrades((prev) => [normalized, ...prev])
+    if (normalized.platform) {
+      setPlatformOptions((prev) => (prev.includes(normalized.platform) ? prev : [...prev, normalized.platform].sort((a, b) => a.localeCompare(b))))
+    }
 
     pushToast(`Logged trade ${normalized.instrument}`, { type: 'success' })
     closeModal()
@@ -196,6 +217,9 @@ export default function TradesClient({ initialTrades = [], initialSummary, initi
     const normalized = normalizeClientTrade(trade)
 
     setTrades((prev) => prev.map((existing) => (existing.id === normalized.id ? normalized : existing)))
+    if (normalized.platform) {
+      setPlatformOptions((prev) => (prev.includes(normalized.platform) ? prev : [...prev, normalized.platform].sort((a, b) => a.localeCompare(b))))
+    }
 
     pushToast(`Updated trade ${normalized.instrument}`, { type: 'success' })
     closeModal()
@@ -224,6 +248,7 @@ export default function TradesClient({ initialTrades = [], initialSummary, initi
       }
 
       setTrades((prev) => prev.filter((existing) => existing.id !== trade.id))
+      setSidebarTradeId((prev) => (prev === trade.id ? null : prev))
 
       pushToast(`Deleted trade ${trade.instrument}`, { type: 'success' })
       router.refresh()
@@ -243,6 +268,14 @@ export default function TradesClient({ initialTrades = [], initialSummary, initi
     setModalMode('edit')
     setActiveTrade(trade)
     setShowModal(true)
+  }
+
+  const openTradeSidebar = (tradeId) => {
+    setSidebarTradeId(tradeId)
+  }
+
+  const closeTradeSidebar = () => {
+    setSidebarTradeId(null)
   }
 
   const handleStatusFilterChange = (value) => {
@@ -325,7 +358,7 @@ export default function TradesClient({ initialTrades = [], initialSummary, initi
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <header className="sticky top-0 z-30 flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-primary-darkest/95  p-6 shadow-lg">
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-primary-light/50 mb-2">Journal</p>
           <h1 className="text-4xl font-bold text-primary-light">Trades</h1>
@@ -347,243 +380,251 @@ export default function TradesClient({ initialTrades = [], initialSummary, initi
           </button>
         </div>
       </header>
-
-      <section className="mb-8 rounded-2xl bg-primary-darkest/40 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <label className="flex-1 flex flex-col gap-2 text-sm text-primary-light/60">
-          <span className="text-xs uppercase tracking-[0.3em] text-primary-light/40">Search</span>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by instrument or strategy"
-            className="w-full px-3 py-2 rounded-lg bg-primary-darkest border border-primary/30 text-primary-light focus:outline-none focus:border-primary"
-          />
-        </label>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-          <label className="text-xs uppercase tracking-[0.3em] text-primary-light/40 flex flex-col gap-2">
-            Status
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 rounded-lg bg-primary-darkest border border-primary/30 text-primary-light focus:outline-none focus:border-primary text-sm"
-            >
-              <option value="all">All</option>
-              <option value="open">Open</option>
-              <option value="closed">Closed</option>
-            </select>
-          </label>
-          <label className="text-xs uppercase tracking-[0.3em] text-primary-light/40 flex flex-col gap-2">
-            Date preset
-            <div className="flex items-center gap-2">
-              <select
-                value={filterPreset}
-                onChange={(event) => handlePresetSelect(event.target.value)}
-                className="px-3 py-2 rounded-lg bg-primary-darkest border border-primary/30 text-primary-light focus:outline-none focus:border-primary text-sm"
-              >
-                {FILTER_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              {filterPreset === 'custom' && (
-                <button
-                  type="button"
-                  onClick={openCustomRangeModal}
-                  className="px-3 py-2 rounded-lg border border-primary/30 text-primary-light text-xs uppercase tracking-[0.2em] hover:border-primary"
-                >
-                  Edit range
-                </button>
-              )}
-            </div>
-          </label>
-        </div>
-      </section>
-
-      <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Trades" value={summary.total} sub={`${summary.open} open`} />
-        <StatCard label="Win Rate" value={`${summary.winRate.toFixed(0)}%`} sub={`${summary.closed} closed`} />
-        <StatCard label="Net Realized PnL" value={currencyFormatter.format(summary.totalPnl)} tone={summary.totalPnl >= 0 ? 'positive' : 'negative'} />
-        <StatCard label="Avg R-Multiple" value={summary.avgR.toFixed(2)} />
-      </section>
-
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-primary-dark rounded-2xl border border-primary/30 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-xl font-semibold text-primary-light">Recent Trades</h2>
-              <p className="text-xs text-primary-light/60">Fetched from Postgres via Prisma</p>
-            </div>
-            <div className="flex gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => handleStatusFilterChange('all')}
-                className={`px-3 py-1 rounded-full border transition-colors ${
-                  statusFilter === 'all'
-                    ? 'border-primary text-primary bg-primary/10'
-                    : 'border-transparent bg-primary/5 text-primary-light/50 hover:text-primary'
-                }`}
-              >
-                All
-              </button>
-              <button
-                type="button"
-                onClick={() => handleStatusFilterChange('open')}
-                className={`px-3 py-1 rounded-full border transition-colors ${
-                  statusFilter === 'open'
-                    ? 'border-amber-300 text-amber-300 bg-amber-500/10'
-                    : 'border-transparent bg-amber-500/5 text-primary-light/50 hover:text-amber-200'
-                }`}
-              >
-                Open
-              </button>
-              <button
-                type="button"
-                onClick={() => handleStatusFilterChange('closed')}
-                className={`px-3 py-1 rounded-full border transition-colors ${
-                  statusFilter === 'closed'
-                    ? 'border-primary text-primary bg-primary/10'
-                    : 'border-transparent bg-primary/5 text-primary-light/50 hover:text-primary'
-                }`}
-              >
-                Closed
-              </button>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto thin-scrollbar">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="text-primary-light/50 text-xs uppercase tracking-wide truncate">
-                  <th className="py-3 pr-4 font-medium">Intrument</th>
-                  <th className="py-3 pr-4 font-medium">Entry</th>
-                  <th className="py-3 pr-4 font-medium">Exit</th>
-                  <th className="py-3 pr-4 font-medium">Size</th>
-                  <th className="py-3 pr-4 font-medium">PnL</th>
-                  <th className="py-3 pr-4 font-medium">Strategy</th>
-                  <th className="py-3 pr-4 font-medium text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-primary/20">
-                {!haveTrades && (
-                  <tr>
-                    <td colSpan={7} className="py-8 text-center text-primary-light/50">
-                      {emptyStateMessage}
-                    </td>
-                  </tr>
-                )}
-                {filteredTrades.map((trade) => (
-                  <tr
-                    key={trade.id}
-                    className="text-primary-light/80 transition-colors hover:bg-primary-darkest/40"
+      {trades.length > 0 ? (
+        <>
+          <section className="mb-8 rounded-2xl bg-primary-darkest/40 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <label className="flex-1 flex flex-col gap-2 text-sm text-primary-light/60">
+              <span className="text-xs uppercase tracking-[0.3em] text-primary-light/40">Search</span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by instrument or strategy"
+                className="w-full px-3 py-2 rounded-lg bg-primary-darkest border border-primary/30 text-primary-light text-sm placeholder:text-primary-light/50 placeholder:text-sm focus:outline-none focus:border-primary"
+              />
+            </label>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4">
+              <Select
+                className="sm:min-w-[180px]"
+                label={<span className="text-xs uppercase tracking-[0.3em] text-primary-light/40">Status</span>}
+                value={statusFilter}
+                onChange={(nextValue) => setStatusFilter(nextValue)}
+                options={[
+                  { label: 'All', value: 'all' },
+                  { label: 'Open', value: 'open' },
+                  { label: 'Closed', value: 'closed' }
+                ]}
+              />
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+                <Select
+                  className="sm:min-w-[220px]"
+                  label={<span className="text-xs uppercase tracking-[0.3em] text-primary-light/40">Date preset</span>}
+                  value={filterPreset}
+                  onChange={(nextValue) => handlePresetSelect(nextValue)}
+                  options={FILTER_OPTIONS}
+                />
+                {filterPreset === 'custom' && (
+                  <button
+                    type="button"
+                    onClick={openCustomRangeModal}
+                    className="px-3 py-2 rounded-lg border border-primary/30 text-primary-light text-xs uppercase tracking-[0.2em] hover:border-primary"
                   >
-                    <td className="py-4 pr-4">
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-primary-light">{trade.instrument}</span>
-                        <span className={`text-xs uppercase tracking-wide ${trade.direction === 'long' ? 'text-green-300' : 'text-red-300'}`}>
-                          {trade.direction}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-4 pr-4">
-                      <p>{formatTradeDate(trade.entryDatetime)}</p>
-                      <p className="text-xs text-primary-light/50">@ {numberFormatter.format(Number(trade.entryPrice))}</p>
-                    </td>
-                    <td className="py-4 pr-4">
-                      {trade.exitDatetime ? (
-                        <>
-                          <p>{formatTradeDate(trade.exitDatetime)}</p>
-                          <p className="text-xs text-primary-light/50">@ {trade.exitPrice != null ? numberFormatter.format(Number(trade.exitPrice)) : '--'}</p>
-                        </>
-                      ) : (
-                        <span className="text-amber-300 text-xs">Open</span>
-                      )}
-                    </td>
-                    <td className="py-4 pr-4">
-                      {numberFormatter.format(Number(trade.positionSize))} units
-                    </td>
-                    <td className="py-4 pr-4">
-                      {typeof trade.realizedPnl === 'number' ? (
-                        <span className={trade.realizedPnl >= 0 ? 'text-green-300' : 'text-red-300'}>
-                          {currencyFormatter.format(trade.realizedPnl)}
-                        </span>
-                      ) : (
-                        <span className="text-amber-300">Pending</span>
-                      )}
-                      {trade.rMultiple != null && (
-                        <p className="text-xs text-primary-light/50">R: {trade.rMultiple}</p>
-                      )}
-                    </td>
-                    <td className="py-4 pr-4">
-                      {trade.strategyName ? (
-                        <span className="px-3 py-1 rounded-full bg-primary/15 text-primary text-xs font-medium">
-                          {trade.strategyName}
-                        </span>
-                      ) : (
-                        <span className="text-primary-light/50 text-xs">Manual</span>
-                      )}
-                    </td>
-                    <td className="py-4 pr-2 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(trade)}
-                          className="p-2 rounded border border-primary/30 text-primary-light hover:border-primary/60 hover:text-primary"
-                          aria-label={`Edit trade ${trade.instrument}`}
-                        >
-                          <PencilIcon className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteTrade(trade)}
-                          className="p-2 rounded border border-red-400/40 text-red-300 hover:border-red-400"
-                          aria-label={`Delete trade ${trade.instrument}`}
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                    Edit range
+                  </button>
+                )}
+              </div>
+            </div>
+          </section>
 
-        <div className="bg-primary-dark rounded-2xl border border-primary/30 p-6 flex flex-col gap-6">
-          <div>
-            <h2 className="text-xl font-semibold text-primary-light mb-1">Monthly PnL</h2>
-            <p className="text-xs text-primary-light/60">Aggregated realized PnL per entry month</p>
-          </div>
-          <div className="space-y-4">
-            {monthlyPnL.map((month) => (
-              <div key={month.label}>
-                <div className="flex items-center justify-between text-sm text-primary-light/70">
-                  <span>{month.label}</span>
-                  <span className={month.pnl >= 0 ? 'text-green-300' : 'text-red-300'}>
-                    {currencyFormatter.format(month.pnl)}
-                  </span>
+          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard label="Total Trades" value={summary.total} sub={`${summary.open} open`} />
+            <StatCard label="Win Rate" value={`${summary.winRate.toFixed(0)}%`} sub={`${summary.closed} closed`} />
+            <StatCard label="Net Realized PnL" value={currencyFormatter.format(summary.totalPnl)} tone={summary.totalPnl >= 0 ? 'positive' : 'negative'} />
+            <StatCard label="Avg R-Multiple" value={summary.avgR.toFixed(2)} />
+          </section>
+
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            <div className="lg:col-span-2 bg-primary-dark rounded-2xl border border-primary/30 px-6 pb-6 md:sticky md:top-[140px] md:z-20 md:max-h-[calc(100vh-9rem)] md:overflow-hidden">
+              <div className="flex items-center justify-between my-6">
+                <div>
+                  <h2 className="text-xl font-semibold text-primary-light">Recent Trades</h2>
+                  <p className="text-xs text-primary-light/60">{dateRangeLabel}</p>
                 </div>
-                <div className="w-full h-2 mt-2 bg-primary-darkest/60 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full ${month.pnl >= 0 ? 'bg-green-400/70' : 'bg-red-400/70'}`}
-                    style={{ width: `${Math.min(Math.abs(month.pnl) / 2000 * 100, 100)}%` }}
-                  />
+                <div className="flex gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleStatusFilterChange('all')}
+                    className={`px-3 py-1 rounded-full border transition-colors ${
+                      statusFilter === 'all'
+                        ? 'border-primary text-primary bg-primary/10'
+                        : 'border-transparent bg-primary/5 text-primary-light/50 hover:text-primary'
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleStatusFilterChange('open')}
+                    className={`px-3 py-1 rounded-full border transition-colors ${
+                      statusFilter === 'open'
+                        ? 'border-amber-300 text-amber-300 bg-amber-500/10'
+                        : 'border-transparent bg-amber-500/5 text-primary-light/50 hover:text-amber-200'
+                    }`}
+                  >
+                    Open
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleStatusFilterChange('closed')}
+                    className={`px-3 py-1 rounded-full border transition-colors ${
+                      statusFilter === 'closed'
+                        ? 'border-primary text-primary bg-primary/10'
+                        : 'border-transparent bg-primary/5 text-primary-light/50 hover:text-primary'
+                    }`}
+                  >
+                    Closed
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
 
-          <div className="border-t border-primary/20 pt-4 text-sm text-primary-light/70">
-            <p>Schema reference:</p>
-            <ul className="mt-2 space-y-1 text-xs text-primary-light/60">
-              <li>instrument • direction • entry/exit timestamps</li>
-              <li>entry_price • exit_price • position_size</li>
-              <li>realized_pnl • r_multiple • strategy_id (nullable)</li>
-            </ul>
-          </div>
+              <div className="overflow-x-auto thin-scrollbar">
+                <div className="max-h-[60vh] overflow-y-auto thin-scrollbar pr-2">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="text-primary-light/50 text-xs uppercase tracking-wide truncate">
+                      <th className="py-3 pr-4 font-medium">Instrument</th>
+                      <th className="py-3 pr-4 font-medium">Entry</th>
+                      <th className="py-3 pr-4 font-medium">Exit</th>
+                      <th className="py-3 pr-4 font-medium">Size</th>
+                      <th className="py-3 pr-4 font-medium">PnL</th>
+                      <th className="py-3 pr-4 font-medium text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-primary/20">
+                    {!haveTrades && (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-primary-light/50">
+                          {emptyStateMessage}
+                        </td>
+                      </tr>
+                    )}
+                    {filteredTrades.map((trade) => (
+                      <tr
+                        key={trade.id}
+                        className="text-primary-light/80 transition-colors hover:bg-primary-darkest/40 cursor-pointer"
+                        onClick={() => openTradeSidebar(trade.id)}
+                      >
+                        <td className="py-4 pr-4">
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-primary-light">{trade.instrument}</span>
+                            <span className={`text-xs uppercase tracking-wide ${trade.direction === 'long' ? 'text-green-300' : 'text-red-300'}`}>
+                              {trade.direction}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-4 pr-4">
+                          <p>{formatTradeDate(trade.entryDatetime)}</p>
+                          <p className="text-xs text-primary-light/50">@ {numberFormatter.format(Number(trade.entryPrice))}</p>
+                        </td>
+                        <td className="py-4 pr-4">
+                          {trade.exitDatetime ? (
+                            <>
+                              <p>{formatTradeDate(trade.exitDatetime)}</p>
+                              <p className="text-xs text-primary-light/50">@ {trade.exitPrice != null ? numberFormatter.format(Number(trade.exitPrice)) : '--'}</p>
+                            </>
+                          ) : (
+                            <span className="text-amber-300 text-xs">Open</span>
+                          )}
+                        </td>
+                        <td className="py-4 pr-4">
+                          {numberFormatter.format(Number(trade.positionSize))} units
+                        </td>
+                        <td className="py-4 pr-4">
+                          {typeof trade.realizedPnl === 'number' ? (
+                            <span className={trade.realizedPnl >= 0 ? 'text-green-300' : 'text-red-300'}>
+                              {currencyFormatter.format(trade.realizedPnl)}
+                            </span>
+                          ) : (
+                            <span className="text-amber-300">Pending</span>
+                          )}
+                          {trade.rMultiple != null && (
+                            <p className="text-xs text-primary-light/50">R: {trade.rMultiple}</p>
+                          )}
+                        </td>
+                        <td className="py-4 pr-2 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                openEditModal(trade)
+                              }}
+                              className="p-2 rounded border border-primary/30 text-primary-light hover:border-primary/60 hover:text-primary"
+                              aria-label={`Edit trade ${trade.instrument}`}
+                            >
+                              <PencilIcon className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                handleDeleteTrade(trade)
+                              }}
+                              className="p-2 rounded border border-red-400/40 text-red-300 hover:border-red-400"
+                              aria-label={`Delete trade ${trade.instrument}`}
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-primary-dark rounded-2xl border border-primary/30 p-6 flex flex-col gap-6 self-start">
+              <div>
+                <h2 className="text-xl font-semibold text-primary-light mb-1">Monthly PnL</h2>
+                <p className="text-xs text-primary-light/60">Aggregated realized PnL per entry month</p>
+              </div>
+              <div className="space-y-4">
+                {monthlyPnL.map((month) => (
+                  <div key={month.label}>
+                    <div className="flex items-center justify-between text-sm text-primary-light/70">
+                      <span>{month.label}</span>
+                      <span className={month.pnl >= 0 ? 'text-green-300' : 'text-red-300'}>
+                        {currencyFormatter.format(month.pnl)}
+                      </span>
+                    </div>
+                    <div className="w-full h-2 mt-2 bg-primary-darkest/60 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full ${month.pnl >= 0 ? 'bg-green-400/70' : 'bg-red-400/70'}`}
+                        style={{ width: `${Math.min(Math.abs(month.pnl) / 2000 * 100, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="border-t border-primary/20 pt-4 text-sm text-primary-light/70">
+                <p>Schema reference:</p>
+                <ul className="mt-2 space-y-1 text-xs text-primary-light/60">
+                  <li>instrument • direction • entry/exit timestamps</li>
+                  <li>entry_price • exit_price • position_size</li>
+                  <li>realized_pnl • r_multiple • strategy_id (nullable)</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+        </>
+      ) : (
+        <div className="bg-primary-dark rounded-2xl border border-primary/30 p-10 text-center space-y-4">
+          <span className="text-6xl block">📓</span>
+          <h2 className="text-2xl font-bold text-primary-light">Log your first trade</h2>
+          <p className="text-primary-light/60 max-w-xl mx-auto">
+            Capture entries, exits, and notes to build conviction in your strategy. Start logging to unlock analytics and performance insights.
+          </p>
+          <button
+            onClick={openCreateModal}
+            className="px-8 py-3 bg-primary hover:bg-primary/90 text-primary-darkest font-semibold rounded-lg transition-colors"
+          >
+            + Log a trade
+          </button>
         </div>
-      </section>
+      )}
 
       {isPortalReady && showCustomRangeModal &&
         createPortal(
@@ -639,6 +680,7 @@ export default function TradesClient({ initialTrades = [], initialSummary, initi
         createPortal(
           <LogTradeModal
             strategies={strategies}
+            platforms={platformOptions}
             mode={modalMode}
             trade={activeTrade}
             onClose={closeModal}
@@ -647,6 +689,80 @@ export default function TradesClient({ initialTrades = [], initialSummary, initi
           />,
           document.body
         )}
+
+      {sidebarTrade && (
+        <>
+          <div
+            className="!mt-0 fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+            onClick={closeTradeSidebar}
+          />
+          <aside className="!mt-0 fixed inset-y-0 right-0 w-full max-w-md bg-primary-darkest border-l border-primary/30 z-50 shadow-2xl flex flex-col">
+            <div className="flex items-start justify-between p-6 border-b border-primary/20">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-primary-light/50 mb-1">Trade</p>
+                <h2 className="text-2xl font-semibold text-primary-light">{sidebarTrade.instrument}</h2>
+                <p className="text-sm text-primary-light/60">
+                  {sidebarTrade.direction?.toUpperCase()} • {formatTradeDate(sidebarTrade.entryDatetime)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeTradeSidebar}
+                className="p-2 rounded-full text-primary-light/60 hover:text-primary-light hover:bg-primary/10"
+                aria-label="Close trade details"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-sm text-primary-light/80">
+              <div className="grid grid-cols-2 gap-4">
+                <DetailItem label="Entry" value={formatTradeDate(sidebarTrade.entryDatetime)} />
+                <DetailItem label="Exit" value={sidebarTrade.exitDatetime ? formatTradeDate(sidebarTrade.exitDatetime) : 'Open'} />
+                <DetailItem label="Position" value={`${numberFormatter.format(Number(sidebarTrade.positionSize))} units`} />
+                <DetailItem label="Entry price" value={numberFormatter.format(Number(sidebarTrade.entryPrice))} />
+                <DetailItem label="Exit price" value={sidebarTrade.exitPrice != null ? numberFormatter.format(Number(sidebarTrade.exitPrice)) : '—'} />
+                <DetailItem label="Platform" value={sidebarTrade.platform ?? '—'} />
+              </div>
+              <div className="border-t border-primary/20 pt-4">
+                <DetailItem label="Realized PnL" value={sidebarTrade.realizedPnl != null ? currencyFormatter.format(sidebarTrade.realizedPnl) : 'Pending'} />
+                <DetailItem label="R-Multiple" value={sidebarTrade.rMultiple != null ? sidebarTrade.rMultiple : '—'} />
+                <DetailItem label="Strategy" value={sidebarTrade.strategyName ?? 'Manual'} />
+              </div>
+            </div>
+
+            <div className="mt-auto p-6 border-t border-primary/20 flex gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  if (sidebarTrade) openEditModal(sidebarTrade)
+                }}
+                className="flex-1 px-4 py-2 rounded-lg border border-primary/40 text-primary-light hover:border-primary/70"
+              >
+                Edit trade
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (sidebarTrade) handleDeleteTrade(sidebarTrade)
+                }}
+                className="flex-1 px-4 py-2 rounded-lg border border-red-500/40 text-red-300 hover:border-red-400"
+              >
+                Delete
+              </button>
+            </div>
+          </aside>
+        </>
+      )}
+    </div>
+  )
+}
+
+function DetailItem({ label, value }) {
+  return (
+    <div>
+      <p className="text-[11px] uppercase tracking-[0.3em] text-primary-light/40 mb-1">{label}</p>
+      <p className="text-primary-light">{value}</p>
     </div>
   )
 }

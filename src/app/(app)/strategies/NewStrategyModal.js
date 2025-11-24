@@ -12,8 +12,7 @@ export default function NewStrategyModal({ onClose, onCreated }) {
     name: '',
     shortCode: '',
     setupDescription: '',
-    notes: '',
-    isActive: 1
+    notes: ''
   })
   const [technicals, setTechnicals] = useState([])
   const [touched, setTouched] = useState(false)
@@ -70,7 +69,7 @@ export default function NewStrategyModal({ onClose, onCreated }) {
           shortCode: formData.shortCode.trim() || undefined,
             setupDescription: formData.setupDescription.trim() || undefined,
           notes: formData.notes.trim() || undefined,
-          isActive: formData.isActive,
+          isActive: 1,
           technicals: technicals.map(t => ({
             indicator: t.indicator.trim(),
             timeframe: t.timeframe.trim() || undefined,
@@ -150,19 +149,6 @@ export default function NewStrategyModal({ onClose, onCreated }) {
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               className="w-full px-4 py-2 bg-primary-darkest/50 border border-primary/30 rounded-lg text-primary-light focus:outline-none focus:border-primary resize-none"
             />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="isActiveNew"
-              checked={formData.isActive === 1}
-              onChange={(e) => setFormData({ ...formData, isActive: e.target.checked ? 1 : 0 })}
-              className="w-4 h-4"
-            />
-            <label htmlFor="isActiveNew" className="text-sm font-medium text-primary-light/80">
-              Active Strategy
-            </label>
           </div>
 
             <div className="border-t border-primary/30 pt-6">

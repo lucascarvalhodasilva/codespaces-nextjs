@@ -59,7 +59,7 @@ export async function PUT(request, { params }) {
 
     const id = parseInt(params.id)
     const body = await request.json()
-    const { name, shortCode, setupDescription, notes, isActive, technicals } = body
+    const { name, shortCode, setupDescription, notes, isActive, archivedReason, technicals } = body
 
     // Prüfen ob Strategie existiert
   const existing = await prisma.strategy.findFirst({ where: { id, userId: user.id } })
@@ -81,6 +81,7 @@ export async function PUT(request, { params }) {
           setupDescription: setupDescription !== undefined ? setupDescription : existing.setupDescription,
           notes: notes !== undefined ? notes : existing.notes,
           isActive: isActive !== undefined ? isActive : existing.isActive,
+          archivedReason: archivedReason !== undefined ? archivedReason : existing.archivedReason
         }
       })
 

@@ -72,6 +72,17 @@ npm run dev
 
 Prisma will connect to the Postgres instance defined in `DATABASE_URL` and the seeded data will appear in the UI (see `src/app`).
 
+## 6. Run everything inside Docker
+
+If you prefer to ship or test a production build inside a container, use the provided `Dockerfile` (multi-stage, optimized via Next.js standalone output):
+
+```bash
+docker build -t codespaces-nextjs .
+docker run --env-file .env.local -p 3000:3000 codespaces-nextjs
+```
+
+The runtime container only needs the environment variables required by Next.js/Prisma (for example `DATABASE_URL`). Mount or supply any other secrets with `--env` or your orchestrator of choice. The container exposes port `3000` and starts the compiled Next.js server via `next start`.
+
 ## Script reference
 
 | Command | Purpose |

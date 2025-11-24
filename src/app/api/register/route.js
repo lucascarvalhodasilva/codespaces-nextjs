@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import prisma from '../../../../db/prisma.js'
-import { loginSchema } from '../../../../shared-domain/auth/auth.schema.js'
+import { signupSchema } from '../../../../shared-domain/auth/auth.schema.js'
 import { hashPassword, createToken, setAuthCookie } from '../../../../lib/auth.js'
 
 export async function POST(request) {
   try {
     const raw = await request.json().catch(() => null)
-    const parsed = loginSchema.safeParse(raw)
+    const parsed = signupSchema.safeParse(raw)
     
     if (!parsed.success) {
       return NextResponse.json(
@@ -19,19 +19,26 @@ export async function POST(request) {
       )
     }
 
-    const { email, password } = parsed.data
+    const { username, email, password } = parsed.data
 
     // Prüfen ob User bereits existiert
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [{ email }, { username }]
+      }
     })
 
     if (existingUser) {
+      const conflictField = existingUser.email === email ? 'email' : 'username'
+      const conflictMessage = conflictField === 'email'
+        ? 'Ein Benutzer mit dieser E-Mail existiert bereits'
+        : 'Dieser Benutzername ist bereits vergeben'
       return NextResponse.json(
         {
           success: false,
           error: 'USER_EXISTS',
-          message: 'Ein Benutzer mit dieser E-Mail existiert bereits'
+          message: conflictMessage,
+          field: conflictField
         },
         { status: 409 }
       )
@@ -43,6 +50,7 @@ export async function POST(request) {
     // User erstellen
     const user = await prisma.user.create({
       data: {
+        username,
         email,
         passwordHash
       }
@@ -51,7 +59,8 @@ export async function POST(request) {
     // JWT Token erstellen
     const token = createToken({
       userId: user.id,
-      email: user.email
+      email: user.email,
+      username: user.username
     })
 
     // Cookie setzen
@@ -64,6 +73,7 @@ export async function POST(request) {
         data: {
           user: {
             id: user.id,
+              username: user.username,
             email: user.email,
             createdAt: user.createdAt
           }

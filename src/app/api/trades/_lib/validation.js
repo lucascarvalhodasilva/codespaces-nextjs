@@ -12,6 +12,8 @@ export function validateTradePayload(payload) {
   if (payload.exitPrice != null && isNaN(parseFloat(payload.exitPrice))) return 'Exit price must be numeric'
   if (payload.realizedPnl != null && isNaN(parseFloat(payload.realizedPnl))) return 'Realized PnL must be numeric'
   if (payload.rMultiple != null && isNaN(parseFloat(payload.rMultiple))) return 'R multiple must be numeric'
+  if (payload.platform != null && payload.platform.trim().length === 0) return 'Platform is invalid'
+  if (payload.platform != null && payload.platform.trim().length > 60) return 'Platform must be shorter than 60 characters'
   return null
 }
 
@@ -31,6 +33,7 @@ export function normalizeTradePayload(payload) {
     positionSize: parseFloat(payload.positionSize),
     realizedPnl:
       payload.realizedPnl != null && payload.realizedPnl !== '' ? parseFloat(payload.realizedPnl) : null,
-    rMultiple: payload.rMultiple != null && payload.rMultiple !== '' ? parseFloat(payload.rMultiple) : null
+    rMultiple: payload.rMultiple != null && payload.rMultiple !== '' ? parseFloat(payload.rMultiple) : null,
+    platform: payload.platform != null && payload.platform !== '' ? payload.platform.trim() : null
   }
 }

@@ -28,6 +28,7 @@ function escapeCsvCell(value) {
 export function buildTradeCsvRows(trades, options = {}) {
   const headers = [
     'Instrument',
+    'Platform',
     'Direction',
     'Entry Date',
     'Exit Date',
@@ -44,6 +45,7 @@ export function buildTradeCsvRows(trades, options = {}) {
 
   const rows = trades.map((trade) => [
     trade.instrument,
+    trade.platform || '',
     trade.direction,
     dateFormatter(trade.entryDatetime),
     trade.exitDatetime ? dateFormatter(trade.exitDatetime) : '',
