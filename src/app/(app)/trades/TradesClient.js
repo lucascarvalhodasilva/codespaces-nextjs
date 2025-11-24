@@ -358,9 +358,8 @@ export default function TradesClient({ initialTrades = [], initialSummary, initi
 
   return (
     <div className="space-y-8">
-      <header className="sticky top-0 z-30 flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-primary-darkest/95  p-6 shadow-lg">
+      <header className="sticky top-0 z-30 flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-primary-darkest/95 py-6 shadow-lg">
         <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-primary-light/50 mb-2">Journal</p>
           <h1 className="text-4xl font-bold text-primary-light">Trades</h1>
           <p className="text-primary-light/60">Track entries, exits, and performance across all setups.</p>
         </div>
