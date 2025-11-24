@@ -245,22 +245,22 @@ export default function StrategiesClient({ strategies: initialStrategies, strate
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <header className="sticky top-0 z-30 flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-primary-darkest/95 py-6 mb-8 shadow-lg">
         <div>
           <h1 className="text-4xl font-bold text-primary-light mb-2">Strategies</h1>
           <p className="text-primary-light/60">Entwickle und teste deine Trading-Strategien</p>
         </div>
         <button
           onClick={() => setShowNewModal(true)}
-          className="px-6 py-3 bg-primary hover:bg-primary/90 text-primary-darkest font-semibold rounded-lg transition-colors"
+          className="px-6 py-2 bg-primary hover:bg-primary/90 text-primary-darkest font-semibold rounded-lg transition-colors"
         >
           + New Strategy
         </button>
-      </div>
+      </header>
 
       {strategies.length > 0 ? (
         <>
-          <div className="mb-4 rounded-2xl bg-primary-darkest/40 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="mb-8 rounded-2xl bg-primary-darkest/40 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <label className="flex-1 flex flex-col gap-2 text-sm text-primary-light/60">
               <span className="text-xs uppercase tracking-[0.3em] text-primary-light/40">Search</span>
               <input
