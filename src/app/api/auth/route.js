@@ -19,11 +19,16 @@ export async function POST(request) {
       )
     }
 
-    const { email, password } = parsed.data
+    const { identifier, password } = parsed.data
 
-    // User aus DB laden
-    const user = await prisma.user.findUnique({
-      where: { email }
+    // User aus DB laden (Email oder Username)
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: identifier },
+          { username: identifier }
+        ]
+      }
     })
 
     if (!user) {

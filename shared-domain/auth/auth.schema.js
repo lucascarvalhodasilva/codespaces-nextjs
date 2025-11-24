@@ -10,7 +10,7 @@ const usernameSchema = z
   .regex(/^[a-zA-Z0-9._-]+$/, 'Username can only contain letters, numbers, dots, underscores, or dashes')
 
 export const loginSchema = z.object({
-  email: emailSchema,
+  identifier: z.string().min(1, 'Email or Username is required'),
   password: passwordSchema
 })
 

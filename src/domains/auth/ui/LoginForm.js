@@ -5,7 +5,7 @@ import Link from 'next/link'
 
 
 export default function LoginForm({ onSwitchToRegister }) {
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -20,7 +20,7 @@ export default function LoginForm({ onSwitchToRegister }) {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ identifier, password })
       })
 
       const data = await res.json()
@@ -41,19 +41,19 @@ export default function LoginForm({ onSwitchToRegister }) {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-6">
+        <form onSubmit={submit} className="space-y-6">
       <div>
-        <label htmlFor="email" className="block text-sm font-medium text-primary-light/80 mb-2">
-          E-Mail
+        <label htmlFor="identifier" className="block text-sm font-medium text-primary-light/80 mb-2">
+          E-Mail oder Username
         </label>
         <input
-          id="email"
-          type="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
+          id="identifier"
+          type="text"
+          value={identifier}
+          onChange={(e) => setIdentifier(e.target.value)}
+          className="w-full px-4 py-3 bg-primary-darkest border border-primary/30 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent text-primary-light placeholder-primary-light/30 transition-all"
+          placeholder="name@example.com oder username"
           required
-          className="w-full px-4 py-3 bg-primary-darkest/50 border border-primary/30 rounded-lg text-primary-light placeholder-primary-light/40 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors"
         />
       </div>
 
