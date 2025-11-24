@@ -1,6 +1,7 @@
 'use client'
 import { useMemo, useState } from 'react'
 import StrategyCard from './StrategyCard'
+import StrategyLeaderboard from './StrategyLeaderboard'
 import NewStrategyModal from './NewStrategyModal'
 import EditStrategyModal from './EditStrategyModal'
 import ArchiveStrategyModal from './ArchiveStrategyModal'
@@ -298,23 +299,31 @@ export default function StrategiesClient({ strategies: initialStrategies, strate
             </div>
           </div>
 
-          {filteredStrategies.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-              {filteredStrategies.map(strategy => (
-                <StrategyCard
-                  key={strategy.id}
-                  strategy={strategy}
-                  onUpdated={handleUpdated}
-                  onDeleted={handleDeleted}
-                  onShowDetails={openSidebar}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="mb-6 rounded-2xl border border-primary/20 bg-primary-darkest/40 p-8 text-center text-primary-light/60">
-              No strategies match your filters.
-            </div>
-          )}
+          <div className="flex flex-col lg:flex-row gap-8 items-start">
+            <aside className="w-full lg:w-80 flex-shrink-0 lg:order-2">
+              <StrategyLeaderboard strategies={strategies} stats={strategyStats} />
+            </aside>
+
+            <main className="flex-1 w-full">
+              {filteredStrategies.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 max-h-[800px] overflow-y-auto pr-2">
+                  {filteredStrategies.map(strategy => (
+                    <StrategyCard
+                      key={strategy.id}
+                      strategy={strategy}
+                      onUpdated={handleUpdated}
+                      onDeleted={handleDeleted}
+                      onShowDetails={openSidebar}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="mb-6 rounded-2xl border border-primary/20 bg-primary-darkest/40 p-8 text-center text-primary-light/60">
+                  No strategies match your filters.
+                </div>
+              )}
+            </main>
+          </div>
         </>
       ) : (
         <div className="bg-primary-dark rounded-xl border border-primary/30 p-8">
